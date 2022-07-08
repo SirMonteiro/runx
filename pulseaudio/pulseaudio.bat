@@ -1,0 +1,1 @@
+start "" /B "%~dp0bin\pulseaudio.exe" --use-pid-file=false -D
