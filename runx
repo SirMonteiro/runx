@@ -15,6 +15,7 @@ Options:
   -d, --desktop                Open a parent window for desktop environments.
   -g, --gpu                    Enable GPU hardware acceleration. Can fail 
                                with NVIDIA cards. Works best with XWin.
+  -p, --pulseaudio             Enable PulseAudio.
       --size WIDTHxHEIGHT      Window size for option --desktop, e.g. 800x600.
       --vcxsrv                 Use X server VcXsrv.
       --xwin                   Use X server XWin.
@@ -79,7 +80,7 @@ finish() {                      # Clean up and terminate
       unset -f cleanup
       unset -f declare_variables parse_options main
       
-      unset Desktopmode Screensize Shareclipboard Sharegpu Verbose Xauthentication
+      unset Desktopmode Screensize Shareclipboard Sharegpu Pulseaudio Verbose Xauthentication
       unset Esc Colblue Colyellow Colgreen Colgreenbg Colred Colredbg Coluline Colnorm
 
       unset Exitcode Hostip Newdisplaynumber Sourced Vcxsrvexe Xserverwinpid Winsubmount Winsubpath Xcommand Xready Xserver Xserverexe Xserverpid Xwinexe
@@ -94,6 +95,7 @@ finish() {                      # Clean up and terminate
         verbose "Terminating X server $Xserver :$Newdisplaynumber. Windows PID: $Xserverwinpid"
         taskkill.exe /F /PID $Xserverwinpid
       }
+      taskkill.exe /F /PID pulseaudio.exe
       exit "${1:-0}"
     ;;
   esac
@@ -521,6 +523,7 @@ cleanup() {                     # --cleanup: Terminate X servers, delete cookies
   MSYS2_ARG_CONV_EXCL='*' tasklist.exe | rmcr | grep -E 'vcxsrv.exe|XWin.exe'
   MSYS2_ARG_CONV_EXCL='*' taskkill.exe /F /PID vcxsrv.exe
   MSYS2_ARG_CONV_EXCL='*' taskkill.exe /F /PID xwin.exe
+  taskkill.exe /F /PID pulseaudio.exe
   # Remove cookies
   Newdisplaynumber=0
   setup_cookie
@@ -535,6 +538,7 @@ declare_variables() {
   Screensize=""
   Shareclipboard="yes"
   Sharegpu="no"
+  Pulseaudio="no"
   Verbose="no"
   Xauthentication="yes"
   
@@ -569,8 +573,8 @@ declare_variables() {
 parse_options() {
   local Shortoptions Longoptions Parsererror
   
-  Shortoptions="dghv"
-  Longoptions="cleanup,clipboard::,desktop,display:,gpu,help,no-auth,size:,vcxsrv,verbose,version,xwin"
+  Shortoptions="dgphv"
+  Longoptions="cleanup,clipboard::,desktop,display:,gpu,pulseaudio,help,no-auth,size:,vcxsrv,verbose,version,xwin"
   Longoptions="$Longoptions,ip:" # experimental
   
   Parsedoptions="$(getopt --options $Shortoptions --longoptions $Longoptions --name "$0" -- "$@" 2>/tmp/runx_parsererror)"
@@ -586,6 +590,7 @@ parse_options() {
       -d|--desktop)       Desktopmode="yes" ;;
          --display)       Newdisplaynumber="${2:-}" ; shift ;;
       -g|--gpu)           Sharegpu="yes" ;;
+      -p|--pulseaudio)    Pulseaudio="yes" ;;
       -h|--help)          usage; finish ;;
          --ip)            Hostip="${2:-}" ; shift ;;
          --no-auth)       Xauthentication="no" ;;
@@ -659,6 +664,10 @@ main() {
 
   # Run X server
   eval $Xcommand 
+
+  # PulseAudio server
+  [ "$Pulseaudio" = "yes" ] && eval "powershell.exe start "c:/pulseaudio/pulseaudio.vbs""
+  export PULSE_SERVER=$Hostip
 
   # Find Windows PID of X server
   case $Winsubsystem in
